@@ -6,33 +6,42 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument("--images", "-i", nargs="+")
 parser.add_argument("--image_dark", "-id")
-parser.add_argument("--flat", "-f")
-parser.add_argument("--flat_dark", "-fd")
-
+parser.add_argument("--master_flat", "-f")
 
 base_dir = os.getcwd()
 
 args = parser.parse_args()
 
-print(f"flats: {args.flats}")
-print(f"master dark of flats: {args.dark}")
-print(f"output file: {args.output}")
-all_flat_filenames = args.flats
-for filename in all_flat_filenames:
-    print(f"flat {filename}")
+raw_image_filenames = args.images
+print(f"Found {len(raw_image_filenames)} raw images, which will be transformed to clean_<image_name>.fit")
+image_dark_data = fits.open(os.path.join(base_dir, args.image_dark))[0].data.astype(np.int32)
+master_flat_data = fits.open(os.path.join(base_dir, args.master_flat))[0].data
 
-print(f"Found {len(all_flat_filenames)} flats")
+master_flat_normalised_data = master_flat_data / np.median(master_flat_data)
+# remove hot and cold pixels from flat
 
-dstack = np.dstack([fits.open(filename)[0].data for filename in all_flat_filenames])
-master_dark_filename = args.dark
-master_dark_data = fits.open(master_dark_filename)[0].data
-final_flat_data = np.median(dstack, axis=2).astype(np.uint16) - master_dark_data
+def remove_outliers(px_value): 
+    if px_value < 0.1: 
+        return 1.0
+    return px_value
 
-master_flat_image = fits.PrimaryHDU(final_flat_data) 
-master_flat_filename = os.path.join(base_dir, args.output)
-master_flat_image.writeto(master_flat_filename)
-print(f"Master dark created in {master_flat_filename}")
+vectorized_outlier_remover = np.vectorize(remove_outliers)
 
+master_flat_normalised_data = vectorized_outlier_remover(master_flat_normalised_data)
+print(f"master flat min {np.min(master_flat_normalised_data)}, max {np.max(master_flat_normalised_data)}")
+print("removed outliers from flat")
 
+for index, filename in enumerate(raw_image_filenames): 
+    raw_image = fits.open(os.path.join(base_dir, filename))[0]
 
+    clean_image_data = (raw_image.data.astype(np.int32) - image_dark_data) / master_flat_normalised_data
+    clean_image_data = clean_image_data.astype(np.int32)
+    # set pixels where dark was brighter than image to 0
+    clean_image_data[clean_image_data < 0] = 0
+    clean_image_data[clean_image_data >= 2**16 - 1] = 2**16 - 1 
+    print(f"clean image data min {np.min(clean_image_data)} max {np.max(clean_image_data)}")
 
+    clean_image = fits.PrimaryHDU(clean_image_data.astype(np.uint16), header=raw_image.header)   
+
+    clean_image.writeto(f"clean_{filename}")
+    print(f"Progress: {100*index/len(raw_image_filenames):.2f}")
