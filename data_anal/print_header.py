@@ -10,5 +10,7 @@ base_dir = os.getcwd()
 
 args = parser.parse_args()
 
-print(fits.open(os.path.join(base_dir, args.name))[0].header)
+head = str(fits.open(os.path.join(base_dir, args.name))[0].header).split("/")
 
+for line in head: 
+    print(line)
