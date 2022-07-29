@@ -13,13 +13,14 @@ base_dir = os.getcwd()
 args = parser.parse_args()
 
 raw_image_filenames = args.images
-print(f"Found {len(raw_image_filenames)} raw images, which will be transformed to clean_<image_name>.fit")
+N_images = len(raw_image_filenames)
+print(f"Found {N_images} raw images, which will be transformed to clean_<image_name>.fit")
 image_dark_data = fits.open(os.path.join(base_dir, args.image_dark))[0].data.astype(np.int32)
 master_flat_data = fits.open(os.path.join(base_dir, args.master_flat))[0].data
 
 master_flat_normalised_data = master_flat_data / np.median(master_flat_data)
-# remove hot and cold pixels from flat
 
+# remove cold pixels from flat
 def remove_outliers(px_value): 
     if px_value < 0.1: 
         return 1.0
@@ -39,9 +40,8 @@ for index, filename in enumerate(raw_image_filenames):
     # set pixels where dark was brighter than image to 0
     clean_image_data[clean_image_data < 0] = 0
     clean_image_data[clean_image_data >= 2**16 - 1] = 2**16 - 1 
-    print(f"clean image data min {np.min(clean_image_data)} max {np.max(clean_image_data)}")
 
     clean_image = fits.PrimaryHDU(clean_image_data.astype(np.uint16), header=raw_image.header)   
 
     clean_image.writeto(f"clean_{filename}")
-    print(f"Progress: {100*index/len(raw_image_filenames):.2f}")
+    print(f"Progress: {100*index/N_images:.2f}")
