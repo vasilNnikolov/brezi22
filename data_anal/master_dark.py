@@ -20,9 +20,7 @@ for filename in all_dark_filenames:
 print(f"Found {len(all_dark_filenames)} darks")
 
 dstack = np.dstack([fits.open(filename)[0].data for filename in all_dark_filenames])
-print(dstack.dtype)
 final_dark_data = np.median(dstack, axis=2).astype(np.uint16)
-print(final_dark_data.dtype)
 
 
 master_dark_image = fits.PrimaryHDU(final_dark_data) 
