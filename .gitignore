@@ -1,2 +1,5 @@
 kupove/
-conda_env/
+astro_env/
+isochrones/
+*_images_astro/
+
