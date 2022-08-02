@@ -18,14 +18,16 @@ target_filename = image_filenames[0]
 target_image_data = fits.open(target_filename)[0].data.astype(np.uint32)
 print(f"Found {N_images} matching the glob, will create a final stacked image stacked_{target_filename}")
 
+transformed_images = [target_image_data]
+
 for index, image_name in enumerate(image_filenames[1:]):
     source_image_data = fits.open(os.path.join(base_dir, image_name))[0].data
     source_median = np.median(source_image_data)
     register_image_data, footprint = aa.register(source_image_data, target_image_data, fill_value=source_median)
-    target_image_data = target_image_data + register_image_data
+    transformed_images.append(register_image_data)
     print(f"Progress: {100*index/(N_images - 1):.2f}")
 
-final_image_data = target_image_data / N_images
+final_image_data = np.median(np.dstack(transformed_images), axis=2)
 final_image_data = final_image_data.astype(np.uint16)
 final_image = fits.PrimaryHDU(final_image_data, header=fits.open(target_filename)[0].header)
 final_image.writeto(f"stacked_{target_filename}")
