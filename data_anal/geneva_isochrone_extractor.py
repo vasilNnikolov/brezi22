@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-filename = "isochrones/long_isochrone.dat"
+filename = "isochrones/isochrone_low_mass.dat"
 with open(filename, "r") as file:
     lines = file.readlines()
 
@@ -17,7 +17,7 @@ while i < len(lines):
 
 times = [6.0 + i*0.1 for i in range(31)] 
 for index, df_data in enumerate(dataframes_data):
-    filename = f"isochrones/isochrone_{10*times[index]:.0f}.dat"
+    filename = f"isochrones/lm_isochrone_{10*times[index]:.0f}.dat"
     # first line is useless
     with open(filename, "w") as file:
         file.write(f"{header}")
